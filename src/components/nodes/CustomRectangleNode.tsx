@@ -77,15 +77,34 @@ const CustomRectangleNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         height: data.height || 80,
       }}
     >
+      {/* Connection Handles with specific IDs for exact positioning */}
       <Handle 
         type="target" 
         position={Position.Top}
+        id="top"
         className="w-3 h-3 bg-blue-500 border-2 border-white shadow-md"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
       />
       <Handle 
         type="target" 
         position={Position.Left}
+        id="left"
         className="w-3 h-3 bg-blue-500 border-2 border-white shadow-md"
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Right}
+        id="right"
+        className="w-3 h-3 bg-blue-500 border-2 border-white shadow-md"
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Bottom}
+        id="bottom"
+        className="w-3 h-3 bg-blue-500 border-2 border-white shadow-md"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
       />
       
       <div
@@ -105,19 +124,21 @@ const CustomRectangleNode: React.FC<NodeProps> = ({ id, data, selected }) => {
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
-            className="w-full h-full resize-none border-none outline-none bg-transparent text-center font-medium leading-tight"
+            className="w-full h-full resize-none border-none outline-none bg-transparent text-center leading-tight"
             style={{ 
               color: data.textColor || '#ffffff',
-              fontSize: '14px'
+              fontSize: `${data.fontSize || 14}px`,
+              fontWeight: data.fontWeight || 'medium'
             }}
             placeholder="Enter text (Ctrl+Enter to save)"
           />
         ) : (
           <div
-            className="text-center font-medium leading-tight break-words whitespace-pre-wrap"
+            className="text-center leading-tight break-words whitespace-pre-wrap"
             style={{ 
               color: data.textColor || '#ffffff',
-              fontSize: '14px'
+              fontSize: `${data.fontSize || 14}px`,
+              fontWeight: data.fontWeight || 'medium'
             }}
           >
             {data.label || 'Process'}
@@ -147,15 +168,34 @@ const CustomRectangleNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         </>
       )}
       
+      {/* Source Handles with specific IDs */}
       <Handle 
         type="source" 
-        position={Position.Bottom}
+        position={Position.Top}
+        id="top"
         className="w-3 h-3 bg-blue-500 border-2 border-white shadow-md"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+      />
+      <Handle 
+        type="source" 
+        position={Position.Left}
+        id="left"
+        className="w-3 h-3 bg-blue-500 border-2 border-white shadow-md"
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
       />
       <Handle 
         type="source" 
         position={Position.Right}
+        id="right"
         className="w-3 h-3 bg-blue-500 border-2 border-white shadow-md"
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="source" 
+        position={Position.Bottom}
+        id="bottom"
+        className="w-3 h-3 bg-blue-500 border-2 border-white shadow-md"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
       />
     </div>
   );

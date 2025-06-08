@@ -13,7 +13,8 @@ import {
   Palette,
   Move,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import NodeCustomizer from './NodeCustomizer';
 import ExportPanel from './ExportPanel';
@@ -90,7 +91,7 @@ const Sidebar: React.FC = () => {
       <div className="p-4 border-b border-gray-200/50 dark:border-gray-700/50">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Design Tools</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Create professional workflows
+          Create professional workflows with precise connections
         </p>
       </div>
 
@@ -176,7 +177,7 @@ const Sidebar: React.FC = () => {
           <SectionHeader 
             title="AI Assistant" 
             section="ai" 
-            icon={<Move className="w-4 h-4" />} 
+            icon={<Sparkles className="w-4 h-4" />} 
           />
           {expandedSections.ai && (
             <div className="p-3 pt-1">

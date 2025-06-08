@@ -1,15 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
+import { Handle, Position, NodeProps } from 'reactflow';
 import { useWorkflow } from '../../contexts/WorkflowContext';
 
 const CustomCircleNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const { updateNodeData } = useWorkflow();
-  const { setNodes } = useReactFlow();
-
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(data.label || '');
-  const [resizing, setResizing] = useState(false);
-
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -44,41 +40,20 @@ const CustomCircleNode: React.FC<NodeProps> = ({ id, data, selected }) => {
 
   const handleResize = (e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault();
-    setResizing(true);
-
     const startX = e.clientX;
     const startY = e.clientY;
     const startSize = data.width || 120;
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
       const delta = Math.max(deltaX, deltaY);
       const newSize = Math.max(50, startSize + delta);
 
-      // Update node dimensions via context
       updateNodeData(id, { width: newSize, height: newSize });
-
-      // Also directly set size in React Flow node state to ensure render
-      setNodes((nodes) =>
-        nodes.map((node) =>
-          node.id === id
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  width: newSize,
-                  height: newSize,
-                },
-              }
-            : node
-        )
-      );
     };
 
     const handleMouseUp = () => {
-      setResizing(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -95,17 +70,38 @@ const CustomCircleNode: React.FC<NodeProps> = ({ id, data, selected }) => {
       style={{
         width: size,
         height: size,
-        pointerEvents: resizing ? 'none' : 'auto',
-      }}
-      onMouseDown={(e) => {
-        if (resizing) e.stopPropagation(); // prevent drag during resize
       }}
     >
-      {/* Target Handles */}
-      <Handle type="target" position={Position.Top} className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md" />
-      <Handle type="target" position={Position.Left} className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md" />
-
-      {/* Circular Node UI */}
+      {/* Connection Handles with specific IDs for exact positioning */}
+      <Handle 
+        type="target" 
+        position={Position.Top}
+        id="top"
+        className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Left}
+        id="left"
+        className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md"
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Right}
+        id="right"
+        className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md"
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Bottom}
+        id="bottom"
+        className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+      />
+      
       <div
         className="w-full h-full rounded-full shadow-lg cursor-pointer transition-all duration-200 hover:shadow-xl flex items-center justify-center p-3"
         style={{
@@ -123,14 +119,22 @@ const CustomCircleNode: React.FC<NodeProps> = ({ id, data, selected }) => {
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
-            className="w-full h-full resize-none border-none outline-none bg-transparent text-center font-medium leading-tight"
-            style={{ color: data.textColor || '#ffffff', fontSize: '12px' }}
+            className="w-full h-full resize-none border-none outline-none bg-transparent text-center leading-tight"
+            style={{ 
+              color: data.textColor || '#ffffff',
+              fontSize: `${data.fontSize || 12}px`,
+              fontWeight: data.fontWeight || 'medium'
+            }}
             placeholder="Enter text (Ctrl+Enter to save)"
           />
         ) : (
           <div
-            className="text-center font-medium leading-tight break-words whitespace-pre-wrap"
-            style={{ color: data.textColor || '#ffffff', fontSize: '12px' }}
+            className="text-center leading-tight break-words whitespace-pre-wrap"
+            style={{ 
+              color: data.textColor || '#ffffff',
+              fontSize: `${data.fontSize || 12}px`,
+              fontWeight: data.fontWeight || 'medium'
+            }}
           >
             {data.label || 'Start/End'}
           </div>
@@ -140,15 +144,40 @@ const CustomCircleNode: React.FC<NodeProps> = ({ id, data, selected }) => {
       {/* Resize Handle */}
       {selected && (
         <div
-          className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-pink-500 border border-white rounded-full cursor-nwse-resize z-10"
+          className="absolute -bottom-1 -right-1 w-3 h-3 bg-pink-500 border border-white rounded-full cursor-nw-resize opacity-0 group-hover:opacity-100 transition-opacity duration-200"
           onMouseDown={handleResize}
-          style={{ pointerEvents: 'auto' }}
         />
       )}
-
-      {/* Source Handles */}
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md" />
-      <Handle type="source" position={Position.Right} className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md" />
+      
+      {/* Source Handles with specific IDs */}
+      <Handle 
+        type="source" 
+        position={Position.Top}
+        id="top"
+        className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+      />
+      <Handle 
+        type="source" 
+        position={Position.Left}
+        id="left"
+        className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md"
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="source" 
+        position={Position.Right}
+        id="right"
+        className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md"
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="source" 
+        position={Position.Bottom}
+        id="bottom"
+        className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+      />
     </div>
   );
 };

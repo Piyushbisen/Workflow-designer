@@ -78,15 +78,34 @@ const CustomTextNoteNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         height: data.height || 100,
       }}
     >
+      {/* Connection Handles with specific IDs for exact positioning */}
       <Handle 
         type="target" 
         position={Position.Top}
+        id="top"
         className="w-3 h-3 bg-yellow-500 border-2 border-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ top: '-6px', left: '50%', transform: 'translateX(-50%)' }}
       />
       <Handle 
         type="target" 
         position={Position.Left}
+        id="left"
         className="w-3 h-3 bg-yellow-500 border-2 border-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ left: '-6px', top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Right}
+        id="right"
+        className="w-3 h-3 bg-yellow-500 border-2 border-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ right: '-6px', top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Bottom}
+        id="bottom"
+        className="w-3 h-3 bg-yellow-500 border-2 border-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ bottom: '-6px', left: '50%', transform: 'translateX(-50%)' }}
       />
       
       <div
@@ -153,15 +172,34 @@ const CustomTextNoteNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         </>
       )}
       
+      {/* Source Handles with specific IDs */}
       <Handle 
         type="source" 
-        position={Position.Bottom}
+        position={Position.Top}
+        id="top"
         className="w-3 h-3 bg-yellow-500 border-2 border-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ top: '-6px', left: '50%', transform: 'translateX(-50%)' }}
+      />
+      <Handle 
+        type="source" 
+        position={Position.Left}
+        id="left"
+        className="w-3 h-3 bg-yellow-500 border-2 border-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ left: '-6px', top: '50%', transform: 'translateY(-50%)' }}
       />
       <Handle 
         type="source" 
         position={Position.Right}
+        id="right"
         className="w-3 h-3 bg-yellow-500 border-2 border-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ right: '-6px', top: '50%', transform: 'translateY(-50%)' }}
+      />
+      <Handle 
+        type="source" 
+        position={Position.Bottom}
+        id="bottom"
+        className="w-3 h-3 bg-yellow-500 border-2 border-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ bottom: '-6px', left: '50%', transform: 'translateX(-50%)' }}
       />
     </div>
   );

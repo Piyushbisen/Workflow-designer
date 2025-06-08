@@ -6,7 +6,8 @@ import ReactFlow, {
   ConnectionMode,
   useReactFlow,
   Panel,
-  NodeTypes
+  NodeTypes,
+  SelectionMode
 } from 'reactflow';
 import { useWorkflow } from '../contexts/WorkflowContext';
 import CustomRectangleNode from './nodes/CustomRectangleNode';
@@ -15,7 +16,7 @@ import CustomDiamondNode from './nodes/CustomDiamondNode';
 import CustomTriangleNode from './nodes/CustomTriangleNode';
 import CustomHexagonNode from './nodes/CustomHexagonNode';
 import CustomTextNoteNode from './nodes/CustomTextNoteNode';
-import { Info } from 'lucide-react';
+import { Info, Copy, Clipboard, Undo, Redo } from 'lucide-react';
 
 const nodeTypes: NodeTypes = {
   rectangle: CustomRectangleNode,
@@ -35,7 +36,15 @@ const Canvas: React.FC = () => {
     onConnect,
     deleteNode,
     deleteEdge,
-    setSelectedNodeId
+    setSelectedNodeId,
+    selectedNodes,
+    copySelectedNodes,
+    pasteNodes,
+    duplicateSelectedNodes,
+    undo,
+    redo,
+    canUndo,
+    canRedo
   } = useWorkflow();
 
   const { fitView } = useReactFlow();
@@ -45,17 +54,44 @@ const Canvas: React.FC = () => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Delete' || event.key === 'Backspace') {
         // Delete selected nodes
-        const selectedNodes = nodes.filter(node => node.selected);
-        const selectedEdges = edges.filter(edge => edge.selected);
+        const selectedNodesList = nodes.filter(node => node.selected);
+        const selectedEdgesList = edges.filter(edge => edge.selected);
         
-        selectedNodes.forEach(node => deleteNode(node.id));
-        selectedEdges.forEach(edge => deleteEdge(edge.id));
+        selectedNodesList.forEach(node => deleteNode(node.id));
+        selectedEdgesList.forEach(edge => deleteEdge(edge.id));
+      } else if (event.ctrlKey || event.metaKey) {
+        switch (event.key.toLowerCase()) {
+          case 'c':
+            event.preventDefault();
+            copySelectedNodes();
+            break;
+          case 'v':
+            event.preventDefault();
+            pasteNodes();
+            break;
+          case 'd':
+            event.preventDefault();
+            duplicateSelectedNodes();
+            break;
+          case 'z':
+            event.preventDefault();
+            if (event.shiftKey) {
+              redo();
+            } else {
+              undo();
+            }
+            break;
+          case 'y':
+            event.preventDefault();
+            redo();
+            break;
+        }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [nodes, edges, deleteNode, deleteEdge]);
+  }, [nodes, edges, deleteNode, deleteEdge, copySelectedNodes, pasteNodes, duplicateSelectedNodes, undo, redo]);
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
     setSelectedNodeId(node.id);
@@ -86,9 +122,15 @@ const Canvas: React.FC = () => {
         onSelectionChange={onSelectionChange}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
+        selectionMode={SelectionMode.Partial}
+        multiSelectionKeyCode="Shift"
         fitView
         attributionPosition="bottom-left"
         className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900"
+        // Force exact handle connections
+        connectionLineType="smoothstep"
+        snapToGrid={true}
+        snapGrid={[15, 15]}
       >
         <Background 
           color="#64748b" 
@@ -114,7 +156,64 @@ const Canvas: React.FC = () => {
           }}
         />
 
-        <Panel position="top-right" className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-lg p-4 m-4 border border-gray-200/50 dark:border-gray-700/50 shadow-lg max-w-sm">
+        {/* Undo/Redo Panel */}
+        <Panel position="top-left" className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-lg p-2 m-4 border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+          <div className="flex space-x-2">
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              className={`p-2 rounded-md transition-colors ${
+                canUndo 
+                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/70' 
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+              }`}
+              title="Undo (Ctrl+Z)"
+            >
+              <Undo className="w-4 h-4" />
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              className={`p-2 rounded-md transition-colors ${
+                canRedo 
+                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/70' 
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+              }`}
+              title="Redo (Ctrl+Shift+Z)"
+            >
+              <Redo className="w-4 h-4" />
+            </button>
+          </div>
+        </Panel>
+
+        {/* Selection Actions Panel */}
+        {selectedNodes.length > 0 && (
+          <Panel position="top-right" className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-lg p-3 m-4 border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {selectedNodes.length} selected
+              </span>
+              <div className="flex space-x-1">
+                <button
+                  onClick={copySelectedNodes}
+                  className="p-2 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/70 transition-colors"
+                  title="Copy (Ctrl+C)"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={duplicateSelectedNodes}
+                  className="p-2 bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 rounded-md hover:bg-green-200 dark:hover:bg-green-900/70 transition-colors"
+                  title="Duplicate (Ctrl+D)"
+                >
+                  <Clipboard className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </Panel>
+        )}
+
+        <Panel position="bottom-right" className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-lg p-4 m-4 border border-gray-200/50 dark:border-gray-700/50 shadow-lg max-w-sm">
           <div className="flex items-start space-x-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
               <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -124,11 +223,13 @@ const Canvas: React.FC = () => {
                 Quick Tips
               </h3>
               <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
-                <li>• Double-click nodes to edit text (use Enter for new lines)</li>
+                <li>• Double-click nodes to edit text (Enter for new lines)</li>
                 <li>• Drag corner handles to resize nodes</li>
-                <li>• Drag from any edge to auto-connect nodes</li>
-                <li>• Select and press Delete to remove items</li>
-                <li>• Use the sidebar to customize and export</li>
+                <li>• Drag from specific edge handles to connect</li>
+                <li>• Shift+click for multi-selection</li>
+                <li>• Ctrl+C/V to copy/paste, Ctrl+D to duplicate</li>
+                <li>• Ctrl+Z to undo, Ctrl+Shift+Z to redo</li>
+                <li>• Delete key to remove selected items</li>
               </ul>
             </div>
           </div>

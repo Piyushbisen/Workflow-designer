@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Node, Edge, addEdge, Connection, NodeChange, EdgeChange, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 
+interface WorkflowAction {
+  type: 'ADD_NODE' | 'DELETE_NODE' | 'UPDATE_NODE' | 'ADD_EDGE' | 'DELETE_EDGE' | 'CLEAR_WORKFLOW' | 'LOAD_WORKFLOW';
+  payload: any;
+  timestamp: number;
+}
+
 interface WorkflowContextType {
   nodes: Node[];
   edges: Edge[];
@@ -15,6 +21,15 @@ interface WorkflowContextType {
   loadWorkflow: (data: { nodes: Node[]; edges: Edge[] }) => void;
   selectedNodeId: string | null;
   setSelectedNodeId: (id: string | null) => void;
+  selectedNodes: Node[];
+  copySelectedNodes: () => void;
+  pasteNodes: () => void;
+  duplicateSelectedNodes: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  history: WorkflowAction[];
 }
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
@@ -31,6 +46,8 @@ const getDefaultNodeData = (type: string) => {
   const baseData = {
     borderWidth: 2,
     textColor: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'medium',
   };
 
   switch (type) {
@@ -106,6 +123,22 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [edges, setEdges] = useState<Edge[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [nodeCounter, setNodeCounter] = useState(1);
+  const [copiedNodes, setCopiedNodes] = useState<Node[]>([]);
+  const [history, setHistory] = useState<WorkflowAction[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const selectedNodes = nodes.filter(node => node.selected);
+  const canUndo = historyIndex >= 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  const addToHistory = useCallback((action: WorkflowAction) => {
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(action);
+      return newHistory.slice(-50); // Keep last 50 actions
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  }, [historyIndex]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes(nds => applyNodeChanges(changes, nds)),
@@ -119,11 +152,14 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      // Preserve the exact source and target handles from the connection
       const edge = {
         ...connection,
         id: `edge-${Date.now()}`,
         type: 'smoothstep',
         animated: true,
+        sourceHandle: connection.sourceHandle, // Keep exact source handle
+        targetHandle: connection.targetHandle, // Keep exact target handle
         markerEnd: {
           type: 'arrowclosed',
           width: 20,
@@ -135,9 +171,18 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           strokeWidth: 2,
         }
       };
-      setEdges(eds => addEdge(edge, eds));
+      
+      setEdges(eds => {
+        const newEdges = addEdge(edge, eds);
+        addToHistory({
+          type: 'ADD_EDGE',
+          payload: edge,
+          timestamp: Date.now()
+        });
+        return newEdges;
+      });
     },
-    []
+    [addToHistory]
   );
 
   const addNode = useCallback((type: string, position: { x: number; y: number }) => {
@@ -155,21 +200,46 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setNodes(nds => [...nds, newNode]);
     setNodeCounter(prev => prev + 1);
-  }, [nodeCounter]);
+    
+    addToHistory({
+      type: 'ADD_NODE',
+      payload: newNode,
+      timestamp: Date.now()
+    });
+  }, [nodeCounter, addToHistory]);
 
   const deleteNode = useCallback((nodeId: string) => {
+    const nodeToDelete = nodes.find(n => n.id === nodeId);
+    const edgesToDelete = edges.filter(edge => edge.source === nodeId || edge.target === nodeId);
+    
     setNodes(nds => nds.filter(node => node.id !== nodeId));
     setEdges(eds => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
+    
     if (selectedNodeId === nodeId) {
       setSelectedNodeId(null);
     }
-  }, [selectedNodeId]);
+
+    addToHistory({
+      type: 'DELETE_NODE',
+      payload: { node: nodeToDelete, edges: edgesToDelete },
+      timestamp: Date.now()
+    });
+  }, [selectedNodeId, nodes, edges, addToHistory]);
 
   const deleteEdge = useCallback((edgeId: string) => {
+    const edgeToDelete = edges.find(e => e.id === edgeId);
     setEdges(eds => eds.filter(edge => edge.id !== edgeId));
-  }, []);
+    
+    addToHistory({
+      type: 'DELETE_EDGE',
+      payload: edgeToDelete,
+      timestamp: Date.now()
+    });
+  }, [edges, addToHistory]);
 
   const updateNodeData = useCallback((nodeId: string, data: any) => {
+    const oldNode = nodes.find(n => n.id === nodeId);
+    
     setNodes(nds => 
       nds.map(node => 
         node.id === nodeId 
@@ -185,16 +255,30 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : node
       )
     );
-  }, []);
+
+    addToHistory({
+      type: 'UPDATE_NODE',
+      payload: { oldNode, newData: data },
+      timestamp: Date.now()
+    });
+  }, [nodes, addToHistory]);
 
   const clearWorkflow = useCallback(() => {
+    const oldState = { nodes, edges };
     setNodes([]);
     setEdges([]);
     setSelectedNodeId(null);
     setNodeCounter(1);
-  }, []);
+    
+    addToHistory({
+      type: 'CLEAR_WORKFLOW',
+      payload: oldState,
+      timestamp: Date.now()
+    });
+  }, [nodes, edges, addToHistory]);
 
   const loadWorkflow = useCallback((data: { nodes: Node[]; edges: Edge[] }) => {
+    const oldState = { nodes, edges };
     setNodes(data.nodes);
     setEdges(data.edges);
     const maxCounter = Math.max(
@@ -205,7 +289,115 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       0
     );
     setNodeCounter(maxCounter + 1);
-  }, []);
+    
+    addToHistory({
+      type: 'LOAD_WORKFLOW',
+      payload: { oldState, newState: data },
+      timestamp: Date.now()
+    });
+  }, [nodes, edges, addToHistory]);
+
+  const copySelectedNodes = useCallback(() => {
+    setCopiedNodes(selectedNodes);
+  }, [selectedNodes]);
+
+  const pasteNodes = useCallback(() => {
+    if (copiedNodes.length === 0) return;
+
+    const newNodes = copiedNodes.map(node => ({
+      ...node,
+      id: `${node.type}-${nodeCounter + copiedNodes.indexOf(node)}`,
+      position: {
+        x: node.position.x + 50,
+        y: node.position.y + 50,
+      },
+      selected: false,
+    }));
+
+    setNodes(nds => [...nds, ...newNodes]);
+    setNodeCounter(prev => prev + copiedNodes.length);
+  }, [copiedNodes, nodeCounter]);
+
+  const duplicateSelectedNodes = useCallback(() => {
+    if (selectedNodes.length === 0) return;
+
+    const newNodes = selectedNodes.map(node => ({
+      ...node,
+      id: `${node.type}-${nodeCounter + selectedNodes.indexOf(node)}`,
+      position: {
+        x: node.position.x + 50,
+        y: node.position.y + 50,
+      },
+      selected: false,
+    }));
+
+    setNodes(nds => [...nds, ...newNodes]);
+    setNodeCounter(prev => prev + selectedNodes.length);
+  }, [selectedNodes, nodeCounter]);
+
+  const undo = useCallback(() => {
+    if (!canUndo) return;
+    
+    const action = history[historyIndex];
+    
+    switch (action.type) {
+      case 'ADD_NODE':
+        setNodes(nds => nds.filter(n => n.id !== action.payload.id));
+        break;
+      case 'DELETE_NODE':
+        setNodes(nds => [...nds, action.payload.node]);
+        setEdges(eds => [...eds, ...action.payload.edges]);
+        break;
+      case 'ADD_EDGE':
+        setEdges(eds => eds.filter(e => e.id !== action.payload.id));
+        break;
+      case 'DELETE_EDGE':
+        setEdges(eds => [...eds, action.payload]);
+        break;
+      case 'CLEAR_WORKFLOW':
+        setNodes(action.payload.nodes);
+        setEdges(action.payload.edges);
+        break;
+      case 'LOAD_WORKFLOW':
+        setNodes(action.payload.oldState.nodes);
+        setEdges(action.payload.oldState.edges);
+        break;
+    }
+    
+    setHistoryIndex(prev => prev - 1);
+  }, [canUndo, history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (!canRedo) return;
+    
+    const action = history[historyIndex + 1];
+    
+    switch (action.type) {
+      case 'ADD_NODE':
+        setNodes(nds => [...nds, action.payload]);
+        break;
+      case 'DELETE_NODE':
+        setNodes(nds => nds.filter(n => n.id !== action.payload.node.id));
+        setEdges(eds => eds.filter(e => !action.payload.edges.some((edge: Edge) => edge.id === e.id)));
+        break;
+      case 'ADD_EDGE':
+        setEdges(eds => [...eds, action.payload]);
+        break;
+      case 'DELETE_EDGE':
+        setEdges(eds => eds.filter(e => e.id !== action.payload.id));
+        break;
+      case 'CLEAR_WORKFLOW':
+        setNodes([]);
+        setEdges([]);
+        break;
+      case 'LOAD_WORKFLOW':
+        setNodes(action.payload.newState.nodes);
+        setEdges(action.payload.newState.edges);
+        break;
+    }
+    
+    setHistoryIndex(prev => prev + 1);
+  }, [canRedo, history, historyIndex]);
 
   return (
     <WorkflowContext.Provider value={{
@@ -221,7 +413,16 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clearWorkflow,
       loadWorkflow,
       selectedNodeId,
-      setSelectedNodeId
+      setSelectedNodeId,
+      selectedNodes,
+      copySelectedNodes,
+      pasteNodes,
+      duplicateSelectedNodes,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
+      history
     }}>
       {children}
     </WorkflowContext.Provider>

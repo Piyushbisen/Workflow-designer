@@ -29,6 +29,14 @@ const NodeCustomizer: React.FC = () => {
     '#8b5cf6', '#7c3aed', '#6d28d9', '#5b21b6',
   ];
 
+   const fontSizes = [10, 12, 14, 16, 18, 20, 24, 28, 32];
+  const fontWeights = [
+    { value: 'normal', label: 'Normal' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'semibold', label: 'Semibold' },
+    { value: 'bold', label: 'Bold' },
+  ];
+
   const handleColorChange = (property: string, color: string) => {
     updateNodeData(selectedNode.id, { [property]: color });
   };
@@ -41,6 +49,10 @@ const NodeCustomizer: React.FC = () => {
     updateNodeData(selectedNode.id, { label });
   };
 
+  const handleFontChange = (property: string, value: string | number) => {
+    updateNodeData(selectedNode.id, { [property]: value });
+  };
+  
   const ColorPicker: React.FC<{ label: string; value: string; property: string }> = ({ label, value, property }) => (
     <div className="space-y-2">
       <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center space-x-2">
@@ -92,6 +104,42 @@ const NodeCustomizer: React.FC = () => {
           rows={3}
         />
 
+      </div>
+
+       {/* Typography */}
+      <div className="space-y-3">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center space-x-2">
+          <Type className="w-4 h-4" />
+          <span>Typography</span>
+        </label>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-600 dark:text-gray-400">Font Size</label>
+            <select
+              value={selectedNode.data.fontSize || 14}
+              onChange={(e) => handleFontChange('fontSize', parseInt(e.target.value))}
+              className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              {fontSizes.map(size => (
+                <option key={size} value={size}>{size}px</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="text-xs text-gray-600 dark:text-gray-400">Font Weight</label>
+            <select
+              value={selectedNode.data.fontWeight || 'medium'}
+              onChange={(e) => handleFontChange('fontWeight', e.target.value)}
+              className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              {fontWeights.map(weight => (
+                <option key={weight.value} value={weight.value}>{weight.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Size Controls */}
